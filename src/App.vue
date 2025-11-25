@@ -4,27 +4,38 @@ import { useStorage } from './hooks/use-storage'
 import { ChevronRightIcon } from 'tdesign-icons-vue-next'
 import { DialogPlugin, MessagePlugin, Textarea } from 'tdesign-vue-next'
 import { clearLink } from './hooks/use-menu'
+import { useRecordStatus } from './hooks/use-record-status'
 
 const CLICKED_LINK_STYLE = {
   color: 'rgba(180, 180, 180, 0.5)',
   textDecoration: 'none',
 }
 
+const { needRecord, switchRecordStatus } = useRecordStatus()
 const storage = useStorage()
 // 监听点击事件
 useClickListener(e => {
   storage.saveLink(e.pathname)
-  Object.assign(e.ref.style, CLICKED_LINK_STYLE)
+  if (needRecord.value) {
+    Object.assign(e.ref.style, CLICKED_LINK_STYLE)
+  }
 })
 
 // 初始化
-const initLinks = () => {
+const initLinks = (focus = false) => {
+  // 判断是否在记录名单中，若不需要记录，并且非强制，直接return
+  if (!needRecord.value && focus === false) {
+    return
+  }
+
   const clickedLinks = storage.getCurrentDomainLinks()
   const links = document.querySelectorAll('a')
   links.forEach(link => {
-    if (clickedLinks[link.pathname]) {
+    if (clickedLinks[link.pathname] && needRecord.value) {
       Object.assign(link.style, CLICKED_LINK_STYLE)
     } else {
+      console.log('重置', link.pathname)
+
       if (link.style.color === CLICKED_LINK_STYLE.color) {
         link.style.color = ''
         link.style.textDecoration = ''
@@ -33,6 +44,10 @@ const initLinks = () => {
   })
 }
 initLinks()
+const handleSwitchStatus = () => {
+  switchRecordStatus()
+  initLinks(true)
+}
 
 const visible = ref(false)
 GM_registerMenuCommand('导入导出功能', () => {
@@ -243,6 +258,20 @@ onMounted(() => {
           </t-list-item>
         </t-list>
       </template>
+      <t-typography-title level="h6" class="group-title" :style="{ 'margin-top': '40px' }">
+        是否显示当前网站点击痕迹
+      </t-typography-title>
+      <t-list split style="margin-bottom: 40px">
+        <t-list-item @click="handleSwitchStatus">
+          <div class="list-item">
+            <span>{{ needRecord ? '显示' : '不显示' }}</span>
+            <div style="display: flex; align-items: center">
+              <span style="color: var(--td-text-color-placeholder)">切换</span>
+              <chevron-right-icon :stroke-width="2" />
+            </div>
+          </div>
+        </t-list-item>
+      </t-list>
     </t-drawer>
   </div>
 </template>
